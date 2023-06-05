@@ -625,8 +625,6 @@ find_panel_info <- function(b) {
   }
 }
 
-# This is for ggplot2>2.2.1, after an API was introduced for extracting
-# information about the plot object.
 find_panel_info_api <- function(b) {
   # Given a built ggplot object, return x and y domains (data space coords) for
   # each panel.
@@ -702,7 +700,7 @@ find_panel_info_api <- function(b) {
     # ggplot object. The original uses quoted expressions; convert to
     # character.
     mapping <- layers$mapping[[1]]
-    # In ggplot2 <=2.2.1, the mappings are expressions. In later versions, they
+    # In ggplot2 <=2.2.1 (legacy versions), the mappings are expressions. In later versions, they
     # are quosures. `deparse(quo_squash(x))` will handle both cases.
     # as.character results in unexpected behavior for expressions like `wt/2`,
     # which is why we use deparse.
