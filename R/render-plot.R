@@ -608,18 +608,20 @@ getGgplotCoordmap <- function(p, width, height, res) {
   })
 }
 
+# ggplot objects have three possible structures, depending on version.
+# API: Modern version, introduced after 2.2.1
+# legacy_post_2.1: Access method for versions between 2.1.0 and 2.2.1
+# legacy_pre_2.1: Access method for versions prior to 2.1.0
 
 find_panel_info <- function(b) {
-  # Structure of ggplot objects changed after 2.1.0. After 2.2.1, there was a
-  # an API for extracting the necessary information.
   ggplot_ver <- get_package_version("ggplot2")
 
   if (ggplot_ver > "2.2.1") {
     find_panel_info_api(b)
   } else if (ggplot_ver > "2.1.0") {
-    find_panel_info_non_api(b, ggplot_format = "new")
+    find_panel_info_non_api(b, ggplot_format = "legacy_post_2.1")
   } else {
-    find_panel_info_non_api(b, ggplot_format = "old")
+    find_panel_info_non_api(b, ggplot_format = "legacy_pre_2.1")
   }
 }
 
@@ -764,17 +766,12 @@ find_panel_info_api <- function(b) {
   })
 }
 
-
-# This is for ggplot2<=2.2.1, before an API was introduced for extracting
-# information about the plot object. The "old" format was used before 2.1.0.
-# The "new" format was used after 2.1.0, up to 2.2.1. The reason these two
-# formats are mixed together in a single function is historical, and it's not
-# worthwhile to separate them at this point.
+# Function for the two legacy access versions of ggplot2 (version < 2.2.1)
 find_panel_info_non_api <- function(b, ggplot_format) {
   # Given a single range object (representing the data domain) from a built
   # ggplot object, return the domain.
   find_panel_domain <- function(b, panel_num, scalex_num = 1, scaley_num = 1) {
-    if (ggplot_format == "new") {
+    if (ggplot_format == "legacy_post_2.1") {
       range <- b$layout$panel_ranges[[panel_num]]
     } else {
       range <- b$panel$ranges[[panel_num]]
@@ -787,7 +784,7 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     )
 
     # Check for reversed scales
-    if (ggplot_format == "new") {
+    if (ggplot_format == "legacy_post_2.1") {
       xscale <- b$layout$panel_scales$x[[scalex_num]]
       yscale <- b$layout$panel_scales$y[[scaley_num]]
     } else {
@@ -831,7 +828,7 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     y_names <- character(0)
 
     # Continuous scales have a trans; discrete ones don't
-    if (ggplot_format == "new") {
+    if (ggplot_format == "legacy_post_2.1") {
       if (!is.null(b$layout$panel_scales$x[[scalex_num]]$trans))
         x_names <- b$layout$panel_scales$x[[scalex_num]]$trans$name
       if (!is.null(b$layout$panel_scales$y[[scaley_num]]$trans))
@@ -906,7 +903,7 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     mappings
   }
 
-  if (ggplot_format == "new") {
+  if (ggplot_format == "legacy_post_2.1") {
     layout <- b$layout$panel_layout
   } else {
     layout <- b$panel$layout
@@ -916,7 +913,7 @@ find_panel_info_non_api <- function(b, ggplot_format) {
 
   # Names of facets
   facet_vars <- NULL
-  if (ggplot_format == "new") {
+  if (ggplot_format == "legacy_post_2.1") {
     facet <- b$layout$facet
     if (inherits(facet, "FacetGrid")) {
       facet_vars <- vapply(c(facet$params$cols, facet$params$rows), as.character, character(1))
