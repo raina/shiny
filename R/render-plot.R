@@ -619,9 +619,9 @@ find_panel_info <- function(b) {
   if (ggplot_ver > "2.2.1") {
     find_panel_info_api(b)
   } else if (ggplot_ver > "2.1.0") {
-    find_panel_info_non_api(b, ggplot_format = "legacy_post_2.1")
+    find_panel_info_legacy_post_2.1(b)
   } else {
-    find_panel_info_non_api(b, ggplot_format = "legacy_pre_2.1")
+    find_panel_info_legacy_pre_2.1(b)
   }
 }
 
@@ -764,16 +764,12 @@ find_panel_info_api <- function(b) {
   })
 }
 
-# Function for the two legacy access versions of ggplot2 (version < 2.2.1)
-find_panel_info_non_api <- function(b, ggplot_format) {
-  # Given a single range object (representing the data domain) from a built
-  # ggplot object, return the domain.
+find_panel_info_legacy_post_2.1 <- function(b) {
   find_panel_domain <- function(b, panel_num, scalex_num = 1, scaley_num = 1) {
-    if (ggplot_format == "legacy_post_2.1") {
-      range <- b$layout$panel_ranges[[panel_num]]
-    } else {
-      range <- b$panel$ranges[[panel_num]]
-    }
+    # Given a single range object (representing the data domain) from a built
+    # ggplot object, return the domain.
+    range <- b$layout$panel_ranges[[panel_num]]
+
     domain <- list(
       left   = range$x.range[1],
       right  = range$x.range[2],
@@ -782,13 +778,9 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     )
 
     # Check for reversed scales
-    if (ggplot_format == "legacy_post_2.1") {
-      xscale <- b$layout$panel_scales$x[[scalex_num]]
-      yscale <- b$layout$panel_scales$y[[scaley_num]]
-    } else {
-      xscale <- b$panel$x_scales[[scalex_num]]
-      yscale <- b$panel$y_scales[[scaley_num]]
-    }
+    xscale <- b$layout$panel_scales$x[[scalex_num]]
+    yscale <- b$layout$panel_scales$y[[scaley_num]]
+
     if (!is.null(xscale$trans) && xscale$trans$name == "reverse") {
       domain$left  <- -domain$left
       domain$right <- -domain$right
@@ -804,8 +796,6 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     domain
   }
 
-  # Given built ggplot object, return object with the log base for x and y if
-  # there are log scales or coord transforms.
   check_log_scales <- function(b, scalex_num = 1, scaley_num = 1) {
 
     # Given a vector of transformation names like c("log-10", "identity"),
@@ -826,20 +816,14 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     y_names <- character(0)
 
     # Continuous scales have a trans; discrete ones don't
-    if (ggplot_format == "legacy_post_2.1") {
-      if (!is.null(b$layout$panel_scales$x[[scalex_num]]$trans))
-        x_names <- b$layout$panel_scales$x[[scalex_num]]$trans$name
-      if (!is.null(b$layout$panel_scales$y[[scaley_num]]$trans))
-        y_names <- b$layout$panel_scales$y[[scaley_num]]$trans$name
 
-    } else {
-      if (!is.null(b$panel$x_scales[[scalex_num]]$trans))
-        x_names <- b$panel$x_scales[[scalex_num]]$trans$name
-      if (!is.null(b$panel$y_scales[[scaley_num]]$trans))
-        y_names <- b$panel$y_scales[[scaley_num]]$trans$name
-    }
+    if (!is.null(b$layout$panel_scales$x[[scalex_num]]$trans))
+      x_names <- b$layout$panel_scales$x[[scalex_num]]$trans$name
+    if (!is.null(b$layout$panel_scales$y[[scaley_num]]$trans))
+      y_names <- b$layout$panel_scales$y[[scaley_num]]$trans$name
 
     coords <- b$plot$coordinates
+
     if (!is.null(coords$trans)) {
       if (!is.null(coords$trans$x))
         x_names <- c(x_names, coords$trans$x$name)
@@ -901,30 +885,21 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     mappings
   }
 
-  if (ggplot_format == "legacy_post_2.1") {
-    layout <- b$layout$panel_layout
-  } else {
-    layout <- b$panel$layout
-  }
+
+  layout <- b$layout$panel_layout
+
   # Convert factor to numbers
   layout$PANEL <- as.integer(as.character(layout$PANEL))
 
   # Names of facets
   facet_vars <- NULL
-  if (ggplot_format == "legacy_post_2.1") {
-    facet <- b$layout$facet
-    if (inherits(facet, "FacetGrid")) {
-      facet_vars <- vapply(c(facet$params$cols, facet$params$rows), as.character, character(1))
-    } else if (inherits(facet, "FacetWrap")) {
-      facet_vars <- vapply(facet$params$facets, as.character, character(1))
-    }
-  } else {
-    facet <- b$plot$facet
-    if (inherits(facet, "grid")) {
-      facet_vars <- vapply(c(facet$cols, facet$rows), as.character, character(1))
-    } else if (inherits(facet, "wrap")) {
-      facet_vars <- vapply(facet$facets, as.character, character(1))
-    }
+
+  facet <- b$layout$facet
+
+  if (inherits(facet, "FacetGrid")) {
+    facet_vars <- vapply(c(facet$params$cols, facet$params$rows), as.character, character(1))
+  } else if (inherits(facet, "FacetWrap")) {
+    facet_vars <- vapply(facet$params$facets, as.character, character(1))
   }
 
   # Iterate over each row in the layout data frame
@@ -962,6 +937,185 @@ find_panel_info_non_api <- function(b, ggplot_format) {
     )
   })
 }
+
+find_panel_info_legacy_pre_2.1 <- function(b) {
+  # Given a single range object (representing the data domain) from a built
+  # ggplot object, return the domain.
+  find_panel_domain <- function(b, panel_num, scalex_num = 1, scaley_num = 1) {
+
+    range <- b$panel$ranges[[panel_num]]
+
+    domain <- list(
+      left   = range$x.range[1],
+      right  = range$x.range[2],
+      bottom = range$y.range[1],
+      top    = range$y.range[2]
+    )
+
+    # Check for reversed scales
+
+    xscale <- b$panel$x_scales[[scalex_num]]
+    yscale <- b$panel$y_scales[[scaley_num]]
+
+    if (!is.null(xscale$trans) && xscale$trans$name == "reverse") {
+      domain$left  <- -domain$left
+      domain$right <- -domain$right
+    }
+    if (!is.null(yscale$trans) && yscale$trans$name == "reverse") {
+      domain$top    <- -domain$top
+      domain$bottom <- -domain$bottom
+    }
+
+    domain <- add_discrete_limits(domain, xscale, "x")
+    domain <- add_discrete_limits(domain, yscale, "y")
+
+    domain
+  }
+
+  # Given built ggplot object, return object with the log base for x and y if
+  # there are log scales or coord transforms.
+  check_log_scales <- function(b, scalex_num = 1, scaley_num = 1) {
+
+    # Given a vector of transformation names like c("log-10", "identity"),
+    # return the first log base, like 10. If none are present, return NULL.
+    extract_log_base <- function(names) {
+      names <- names[grepl("^log-", names)]
+
+      if (length(names) == 0)
+        return(NULL)
+
+      names <- names[1]
+
+      as.numeric(sub("^log-", "", names))
+    }
+
+    # Look for log scales and log coord transforms. People shouldn't use both.
+    x_names <- character(0)
+    y_names <- character(0)
+
+    # Continuous scales have a trans; discrete ones don't
+
+    if (!is.null(b$panel$x_scales[[scalex_num]]$trans))
+      x_names <- b$panel$x_scales[[scalex_num]]$trans$name
+    if (!is.null(b$panel$y_scales[[scaley_num]]$trans))
+      y_names <- b$panel$y_scales[[scaley_num]]$trans$name
+
+
+    coords <- b$plot$coordinates
+
+    if (!is.null(coords$trans)) {
+      if (!is.null(coords$trans$x))
+        x_names <- c(x_names, coords$trans$x$name)
+      if (!is.null(coords$trans$y))
+        y_names <- c(y_names, coords$trans$y$name)
+    }
+
+    # Keep only scale/trans names that start with "log-"
+    x_names <- x_names[grepl("^log-", x_names)]
+    y_names <- y_names[grepl("^log-", y_names)]
+
+    # Extract the log base from the trans name -- a string like "log-10".
+    list(
+      x = extract_log_base(x_names),
+      y = extract_log_base(y_names)
+    )
+  }
+
+  # Given a built ggplot object, return a named list of variables mapped to x
+  # and y. This function will be called for each panel, but in practice the
+  # result is always the same across panels, so we'll cache the result.
+  mappings_cache <- NULL
+  find_plot_mappings <- function(b) {
+    if (!is.null(mappings_cache))
+      return(mappings_cache)
+
+    # lapply'ing as.character results in unexpected behavior for expressions
+    # like `wt/2`. This works better.
+    mappings <- as.list(as.character(b$plot$mapping))
+
+    # If x or y mapping is missing, look in each layer for mappings and return
+    # the first one.
+    missing_mappings <- setdiff(c("x", "y"), names(mappings))
+    if (length(missing_mappings) != 0) {
+      # Grab mappings for each layer
+      layer_mappings <- lapply(b$plot$layers, function(layer) {
+        lapply(layer$mapping, as.character)
+      })
+
+      # Get just the first x or y value in the combined list of plot and layer
+      # mappings.
+      mappings <- c(list(mappings), layer_mappings)
+      mappings <- Reduce(x = mappings, init = list(x = NULL, y = NULL),
+        function(init, m) {
+          # Can't use m$x/m$y; you get a partial match with xintercept/yintercept
+          if (is.null(init[["x"]]) && !is.null(m[["x"]])) init$x <- m[["x"]]
+          if (is.null(init[["y"]]) && !is.null(m[["y"]])) init$y <- m[["y"]]
+          init
+        }
+      )
+    }
+
+    # Look for CoordFlip
+    if (inherits(b$plot$coordinates, "CoordFlip")) {
+      mappings[c("x", "y")] <- mappings[c("y", "x")]
+    }
+
+    mappings_cache <<- mappings
+    mappings
+  }
+
+  layout <- b$panel$layout
+
+
+  # Convert factor to numbers
+  layout$PANEL <- as.integer(as.character(layout$PANEL))
+
+  # Names of facets
+  facet_vars <- NULL
+
+  facet <- b$plot$facet
+  if (inherits(facet, "grid")) {
+    facet_vars <- vapply(c(facet$cols, facet$rows), as.character, character(1))
+  } else if (inherits(facet, "wrap")) {
+    facet_vars <- vapply(facet$facets, as.character, character(1))
+  }
+
+  # Iterate over each row in the layout data frame
+  lapply(seq_len(nrow(layout)), function(i) {
+    # Slice out one row
+    l <- layout[i, ]
+
+    scale_x <- l$SCALE_X
+    scale_y <- l$SCALE_Y
+
+    mapping <- find_plot_mappings(b)
+
+    # For each of the faceting variables, get the value of that variable in
+    # the current panel. Default to empty _named_ list so that it's sent as a
+    # JSON object, not array.
+    panel_vars <- list(a = NULL)[0]
+    for (i in seq_along(facet_vars)) {
+      var_name <- facet_vars[[i]]
+      vname <- paste0("panelvar", i)
+
+      mapping[[vname]] <- var_name
+      panel_vars[[vname]] <- l[[var_name]]
+    }
+
+    list(
+      panel   = l$PANEL,
+      row     = l$ROW,
+      col     = l$COL,
+      panel_vars = panel_vars,
+      scale_x = scale_x,
+      scale_y = scale_x,
+      log     = check_log_scales(b, scale_x, scale_y),
+      domain  = find_panel_domain(b, l$PANEL, scale_x, scale_y),
+      mapping = mapping
+    )
+  })
+}
+
 
 # Use public API for getting the unit's type (grid::unitType(), added in R 4.0)
 # https://github.com/wch/r-source/blob/f9b8a42/src/library/grid/R/unit.R#L179
